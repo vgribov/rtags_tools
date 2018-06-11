@@ -1,0 +1,39 @@
+#!/bin/bash
+
+export tracer_real_cc="$(which ${CROSS_COMPILE}cc)"
+export tracer_real_cxx="$(which ${CROSS_COMPILE}c++)"
+export tracer_file="$PWD/trace"
+
+tracer_script='#!/bin/bash
+
+args=$*
+
+if [[ $0 =~ cc$ ]]; then
+    trace_cmd="cc"
+    real_cmd="${tracer_real_cc}"
+else
+    trace_cmd="c++"
+    real_cmd="${tracer_real_cxx}"
+fi
+
+if [[ ${args} =~ \-c ]]; then
+    echo "${trace_cmd} ${args}" >>"${tracer_file}"
+fi
+
+${real_cmd} ${args}
+exit $?
+'
+
+if ! [[ -d ".tracer" ]]; then
+    mkdir .tracer && cd .tracer
+    echo "${tracer_script}" >tracer
+    chmod +x tracer
+    ln -s tracer cc
+    ln -s tracer c++
+    cd ..
+fi
+
+cat /dev/null >"${tracer_file}"
+ 
+make clean
+PATH="$PWD/.tracer:$PATH" make CC="cc" CXX="c++" $@

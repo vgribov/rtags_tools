@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [[ -n "$1" ]]; then
+    project_root="--project-root=$1"
+fi
+
+while IFS='' read -r cmd; do
+    if [[ -n "${cmd}" ]]; then
+        rc ${project_root} -c "${cmd}"
+    fi
+done < "trace"
