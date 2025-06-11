@@ -1,39 +1,33 @@
-#!/bin/bash
+#!/bin/sh
 
-export tracer_real_cc="$(which ${CROSS_COMPILE}cc)"
-export tracer_real_cxx="$(which ${CROSS_COMPILE}c++)"
 export tracer_file="$PWD/trace"
 
-tracer_script='#!/bin/bash
+tracer_script='#!/bin/sh
 
-args=$*
+is_compile_command() {
+    for a; do
+        [ "$a" = "-c" ] && return 0
+    done
+    return 1
+}
 
-if [[ $0 =~ cc$ ]]; then
-    trace_cmd="cc"
-    real_cmd="${tracer_real_cc}"
-else
-    trace_cmd="c++"
-    real_cmd="${tracer_real_cxx}"
+cmd=${0##*/}
+if is_compile_command "$@"; then
+    echo "$cmd $*" >>"$tracer_file"
 fi
 
-if [[ ${args} =~ \-c ]]; then
-    echo "${trace_cmd} ${args}" >>"${tracer_file}"
-fi
-
-${real_cmd} ${args}
-exit $?
+PATH=${PATH#*:} exec $cmd "$@"
 '
 
-if ! [[ -d ".tracer" ]]; then
+if ! [ -d ".tracer" ]; then
     mkdir .tracer && cd .tracer
-    echo "${tracer_script}" >tracer
+    printf "${tracer_script}" >tracer
     chmod +x tracer
-    ln -s tracer cc
-    ln -s tracer c++
+    ln -s tracer ${CROSS_COMPILE}gcc
+    ln -s tracer ${CROSS_COMPILE}g++
     cd ..
 fi
 
 cat /dev/null >"${tracer_file}"
- 
-make clean
-PATH="$PWD/.tracer:$PATH" make CC="cc" CXX="c++" $@
+
+PATH="$PWD/.tracer:$PATH" make $@
